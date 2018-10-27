@@ -50,9 +50,6 @@
 using namespace QtConcurrent;
 using namespace std;
 
-static qreal getPeakValue(const QAudioFormat &format);
-static QVector<qreal> getBufferLevels(const QAudioBuffer &buffer);
-
 template <class T>
 static QVector<qreal> getBufferLevels(const T *buffer, int frames, int channels);
 
@@ -303,7 +300,6 @@ static bool isPlaylist(const QUrl &url) // Check for ".wav" playlists.
 
 void VajeganGUI::addToPlaylist(const QList<QUrl> urls)
 {
-    QTableWidgetItem *item;
     foreach (const QUrl &url, urls) {
         if (isPlaylist(url))
         {
@@ -442,7 +438,7 @@ void VajeganGUI::bufferingProgress(int progress)
     setStatusInfo(tr("Buffering %4%").arg(progress));
 }
 
-void VajeganGUI::audioAvailableChanged(bool available)
+void VajeganGUI::audioAvailableChanged()
 {
 }
 
@@ -664,112 +660,7 @@ void VajeganGUI::onKeywordEnteredSlot()
 
 // +======================================== Keyword spotter related functions ===================================
 
-kwsResult runInThread(const kwsThreadInput &input)
-{
-    //    //    qDebug() << "in thread" << QThread::currentThreadId();
-    //    kwsResult result;
-    //    result.confidenceSize = 0;
-    //    result.duration = 0;
-
-    //    // Open and read the input file header
-    //    FILE *fp_wav_in = NULL;
-    //    fp_wav_in = fopen (input.fileUrl.toLocalFile().toStdString().c_str(), "rb");
-    //    if (fp_wav_in == NULL)
-    //    {
-    //        qDebug() << "ERROR:   Could not open file '%s' !\r\n";
-    //        return result;
-    //    }
-
-    //    int Header_Num_Bytes = 44;
-    //    int wav_file_size;
-    //    fseek(fp_wav_in, 0, SEEK_END);
-    //    wav_file_size = (ftell(fp_wav_in) - Header_Num_Bytes) / sizeof(short);
-    //    fseek(fp_wav_in, 0, SEEK_SET);
-
-    //    char *Header;
-    //    Header = new char[Header_Num_Bytes];
-    //    if (Header_Num_Bytes != fread (Header, sizeof (char), Header_Num_Bytes, fp_wav_in))
-    //    {
-    //        qDebug() << "ERROR:   Invalid WAV header !\r\n";
-    //        return result;
-    //    }
-
-    //    // In_Wav_Buff_Size is set to be 20 seconds
-    //    int bufferSize, fixedBufferSize = input.sampleRate * 20;
-    //    int remainedSamples = wav_file_size, overlapWindowSize;
-    //    float inputData[fixedBufferSize];
-    //    short inputDataShort;
-    //    int resCounter = 0;
-
-    //    // Read file till it becomes finish
-    //    int iteration = 0;
-    //    while (remainedSamples > 0)
-    //    {
-    //        if(iteration)
-    //        {
-    //            overlapWindowSize = input.sampleRate;
-
-    //            // Fill first 1 second of inputData with last 1 second of previous data
-    //            for(int i = 0; i < overlapWindowSize; i++)
-    //                inputData[i] = inputData[bufferSize - input.sampleRate + i];
-    //        }
-    //        else
-    //        {
-    //            overlapWindowSize = 0;
-    //            //            // Fill first 1 second of inputData by 0
-    //            //            for(int i=0; i < overlapWindowSize; i++)
-    //            //                inputData[i] = (float)0;
-    //        }
-
-    //        if (remainedSamples >= (fixedBufferSize - overlapWindowSize))
-    //        {
-    //            bufferSize = fixedBufferSize;
-    //            remainedSamples -= (bufferSize - overlapWindowSize);
-    //        }
-    //        else
-    //        {
-    //            bufferSize = remainedSamples + overlapWindowSize;
-    //            remainedSamples -= remainedSamples;
-    //        }
-
-    //        // Reading Wave samples from file
-    //        for (int i = overlapWindowSize; i < bufferSize; i++)
-    //        {
-    //            if (fp_wav_in == NULL)
-    //            {
-    //                return result;
-    //            }
-    //            if (!fread (&inputDataShort, sizeof (short), 1, fp_wav_in)){
-    //                return result;
-    //            }
-    //            inputData[i] = (float)inputDataShort;
-    //        }
-
-    //        // Run KWS on 20 sec of file
-    //        Classifier_KWS *kws = new Classifier_KWS(input.keyword.length());
-    //        float diff = Vajegan(inputData,
-    //                             bufferSize,
-    //                             input.keyword.toStdString(),
-    //                             kws);
-
-    //        result.duration += diff / CLOCKS_PER_SEC;
-    //        result.confidenceSize += kws->confidence.size();
-    //        for(int i = 0; i < kws->confidence.size(); i++, resCounter++)
-    //        {
-    //            result.confidence[resCounter] = kws->confidence[i];
-    //            result.timeAligns[resCounter][0] = kws->time_aligns[i][0] / 100.0 + (iteration * 20 - iteration);
-    //            result.timeAligns[resCounter][1] = kws->time_aligns[i][kws->time_aligns[i].size()-1] / 100.0 + (iteration * 20 - iteration);
-    //        }
-
-    //        delete kws;
-    //        iteration++;
-    //    }
-
-    //    //    qDebug() << QThread::currentThreadId() << " finished";
-    //    return result;
-}
-
-kwsResult VajeganGUI::scale(const kwsThreadInput &input)
+kwsResult VajeganGUI::searchForKeywords(const kwsThreadInput &input)
 {
     qDebug() << "in thread" << QThread::currentThreadId();
     kwsResult result;
@@ -785,7 +676,7 @@ kwsResult VajeganGUI::scale(const kwsThreadInput &input)
         return result;
     }
 
-    int Header_Num_Bytes = 44;
+    unsigned int Header_Num_Bytes = 44;
     int wav_file_size;
     fseek(fp_wav_in, 0, SEEK_END);
     wav_file_size = (ftell(fp_wav_in) - Header_Num_Bytes) / sizeof(short);
@@ -850,10 +741,10 @@ kwsResult VajeganGUI::scale(const kwsThreadInput &input)
             inputData[i] = (float)inputDataShort;
         }
 
-        // Keyword classifier initialization
-        int minPhonemeLength, maxPhonemeLength;
-        minPhonemeLength = 20;
-        maxPhonemeLength = 330;
+        // Keyword classifier initialization. Hardcoded according to configuration file
+        int minPhonemeLength = 20;
+        int maxPhonemeLength = 330;
+        unsigned int numOfPhonemes = 30;
 
         KeywordClassifier *keywordClassifier;
         keywordClassifier = new KeywordClassifier(input.keyword.length());
@@ -873,31 +764,34 @@ kwsResult VajeganGUI::scale(const kwsThreadInput &input)
         keywordClassifier->phonemeLengthStdVector.resize(input.phonemeStates.width());
         keywordClassifier->phonemeLengthStdVector = input.phonemeStates.row(1);
 
-        if (keywordClassifier->phonemeLengthMeanVector.size() != 30 || keywordClassifier->phonemeLengthStdVector.size() != 30) {
-            std::cerr << "Error: number of phonemes loaded from phoneme stats is incorrect";
+        if (keywordClassifier->phonemeLengthMeanVector.size() != numOfPhonemes || keywordClassifier->phonemeLengthStdVector.size() != numOfPhonemes) {
+            qDebug() << "Error: number of phonemes loaded from phoneme stats is incorrect";
         }
-
-        keywordClassifier->weigths.resize(keywordClassifier->phi_size);
-        keywordClassifier->weigths.zeros();
-        keywordClassifier->weigths = input.classifierWeigths;
-
-        float diff = Vajegan(inputData,
-                             bufferSize,
-                             input.keyword.toStdString(),
-                             keywordClassifier,
-                             input.phonemeClassifier);
-
-        result.duration += diff / CLOCKS_PER_SEC;
-        result.confidenceSize += keywordClassifier->confidence.size();
-        for(int i = 0; i < keywordClassifier->confidence.size(); i++, resCounter++)
+        else
         {
-            result.confidence[resCounter] = keywordClassifier->confidence[i];
-            result.timeAligns[resCounter][0] = keywordClassifier->timeAligns[i][0] / 100.0 + (iteration * 20 - iteration);
-            result.timeAligns[resCounter][1] = keywordClassifier->timeAligns[i][keywordClassifier->timeAligns[i].size()-1] / 100.0 + (iteration * 20 - iteration);
+            keywordClassifier->weigths.resize(keywordClassifier->phi_size);
+            keywordClassifier->weigths.zeros();
+            keywordClassifier->weigths = input.classifierWeigths;
+
+            float diff = Vajegan(inputData,
+                                 bufferSize,
+                                 input.keyword.toStdString(),
+                                 keywordClassifier,
+                                 input.phonemeClassifier);
+
+            result.duration += diff / CLOCKS_PER_SEC;
+            result.confidenceSize += keywordClassifier->confidence.size();
+            for(unsigned int i = 0; i < keywordClassifier->confidence.size(); i++, resCounter++)
+            {
+                result.confidence[resCounter] = keywordClassifier->confidence[i];
+                result.timeAligns[resCounter][0] = keywordClassifier->timeAligns[i][0] / 100.0 + (iteration * 20 - iteration);
+                result.timeAligns[resCounter][1] = keywordClassifier->timeAligns[i][keywordClassifier->timeAligns[i].size()-1] / 100.0 + (iteration * 20 - iteration);
+            }
+
+            iteration++;
         }
 
         delete keywordClassifier;
-        iteration++;
     }
 
     qDebug() << "Thread" << QThread::currentThreadId() << "finished";
@@ -1096,8 +990,8 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
         QFutureWatcher<kwsResult> futureWatcher;
         QObject::connect(&futureWatcher, &QFutureWatcher<void>::finished, &dialog, &QProgressDialog::reset);
         QObject::connect(&dialog, &QProgressDialog::canceled, &futureWatcher, &QFutureWatcher<void>::cancel);
-        //        QObject::connect(&futureWatcher,  &QFutureWatcher<void>::progressRangeChanged, &dialog, &QProgressDialog::setRange);
-        //        QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressValueChanged,  &dialog, &QProgressDialog::setValue);
+        QObject::connect(&futureWatcher,  &QFutureWatcher<void>::progressRangeChanged, &dialog, &QProgressDialog::setRange);
+        QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressValueChanged,  &dialog, &QProgressDialog::setValue);
 
         // Prepare keywords container
         QList<words> wordPairList;
@@ -1153,11 +1047,11 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
 //            scale(input);
         }
 
-        futureWatcher.setFuture(QtConcurrent::mapped(processList, scale));
+        futureWatcher.setFuture(QtConcurrent::mapped(processList, searchForKeywords));
         dialog.exec();
         futureWatcher.waitForFinished();
 
-        dialog.setValue((progressCounter * 1.0 / maxRange) * 100);
+//        dialog.setValue((progressCounter * 1.0 / maxRange) * 100);
         if(futureWatcher.isCanceled())
             return;
 
@@ -1843,7 +1737,7 @@ void VajeganGUI::onAddToQuoteDatabseClicked()
         if(!query.exec())
         {
             qDebug() << "Add quote - ERROR: " << query.lastError().text();
-            int ret = QMessageBox::critical(this, tr("واژه یاب"),
+            QMessageBox::critical(this, tr("واژه یاب"),
                                             tr(" خطا در پایگاه داده\n"),
                                             QMessageBox::Ok);
         }
@@ -2177,9 +2071,6 @@ void VajeganGUI::addNewUser()
     else
         qWarning() << "DatabaseConnect - ERROR: no driver " << DRIVER << " available";
 
-
-    int tableCounter = 0;
-    QTableWidgetItem *tableItem;
 
     QSqlQuery query;
     query.prepare("SELECT username FROM users WHERE username = ?");

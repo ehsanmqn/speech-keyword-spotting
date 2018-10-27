@@ -374,7 +374,7 @@ Inputs:       SpeechUtterance_KWS& x
 Output:       void.
 Comments:     this function is added from HTK-ceps-dist file
 ***********************************************************************/
-void PhonemeClassifier::ceps_dist(Dataset& dataset)
+void PhonemeClassifier::cepestralsDistance(Dataset& dataset)
 {
     // Compute all distances. Run over all possible alignment landmarks y_i
     infra::vector w(last_s);

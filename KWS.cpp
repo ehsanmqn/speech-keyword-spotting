@@ -168,7 +168,7 @@ int extractFeatures(PhonemeClassifier &phonemeClassifier,
     phonemeClassifier.predict(dataSet);
 
     // Calculating Distance Matrix for new Input Buffer
-    phonemeClassifier.ceps_dist(dataSet);
+    phonemeClassifier.cepestralsDistance(dataSet);
 
     dataSet.startOfSpeechIndicator = firstBufferIndicator;
     dataSet.endOfSpeechIndicator = lastBufferIndicator;

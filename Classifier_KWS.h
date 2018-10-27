@@ -42,7 +42,7 @@ public:
     float **ModelsBuffer;
 
     void predict(Dataset& dataset);
-    void ceps_dist(Dataset& dataset);
+    void cepestralsDistance(Dataset& dataset);
     void loadPhonemeClassifier(std::string &filename);
     void deletePhonemeClassifier(void);
     void averaging();

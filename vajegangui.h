@@ -123,7 +123,6 @@ public:
     QList<searchResult> resultContainer;
     QList<kwsResult> kwsResultContainer;
     QList<words> wordList;
-    int loadedUrlCounter;
     string keywordClassifierModelConfig;
     string phonemClassifierConfig;
     string phonmeModelsFileList;
@@ -134,11 +133,13 @@ public:
     infra::matrix phonemeStates;
     infra::vector classifierWeigths;
 
+    int loadedUrlCounter;
+
     explicit VajeganGUI(QWidget *parent = 0);
     ~VajeganGUI();
     bool isPlayerAvailable() const;
     void addToPlaylist(const QList<QUrl> urls);
-    static kwsResult scale(const kwsThreadInput &input);
+    static kwsResult searchForKeywords(const kwsThreadInput &input);
 
 
 private:
@@ -186,7 +187,7 @@ private slots:
     void displayErrorMessage();
     void metaDataChanged();
     void bufferingProgress(int progress);
-    void audioAvailableChanged(bool available);
+    void audioAvailableChanged();
     void open();
     void openFolder();
     void jump(const QModelIndex &index);
@@ -201,7 +202,6 @@ private slots:
     void alternateAddButton();
     void addNewUser();
     void deleteUser();
-//    void enableDeleteUserButton();
     void changeQuoteSize(int size);
     void onConfigurationChanged();
     void onItalicCheckboxToggled(bool state);
