@@ -437,6 +437,7 @@ Comments:     none.
 ***********************************************************************/
 PhonemeClassifier::PhonemeClassifier()
 {
+    numOfModels = 30;
     maxInputBufferLength = 50000;
     instance_index = 0;
     ranks.resize(numOfModels);
@@ -572,7 +573,7 @@ Inputs:       string & filename
 Output:       none.
 Comments:     none.
 ***********************************************************************/
-void PhonemeClassifier::loadPhonemeClassifier(std::string &filename, int numOfModels)
+void PhonemeClassifier::loadPhonemeClassifier(std::string &filename)
 {
     /* GMM Phoneme Classifier loading*/
     char line[1000];

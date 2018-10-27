@@ -43,7 +43,7 @@ public:
 
     void predict(Dataset& dataset);
 	void ceps_dist(Dataset& x);
-    void loadPhonemeClassifier(std::string &filename, int numOfModels);
+    void loadPhonemeClassifier(std::string &filename);
     void deletePhonemeClassifier(void);
     void averaging();
 };

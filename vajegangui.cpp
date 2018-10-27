@@ -1074,7 +1074,7 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
 
         // Declaration of phoneme classifier
         PhonemeClassifier phonemeClassifier;
-        phonemeClassifier.loadPhonemeClassifier(phonmeModelsFileList, 30);
+        phonemeClassifier.loadPhonemeClassifier(phonmeModelsFileList);
 
         Initialize(keywordClassifierModelConfig,
                    phonemClassifierConfig,
