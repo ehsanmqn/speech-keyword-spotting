@@ -1,0 +1,32 @@
+<RCC>
+    <qresource prefix="/loginimg">
+        <file>img.png</file>
+        <file>irlogo.png</file>
+        <file>ir-logo.png</file>
+        <file>leader.png</file>
+    </qresource>
+    <qresource prefix="/icon">
+        <file>voice.png</file>
+        <file>folder.png</file>
+        <file>file.png</file>
+        <file>garbage.png</file>
+        <file>database.png</file>
+        <file>language.png</file>
+        <file>loupe.png</file>
+        <file>office-material.png</file>
+        <file>question.png</file>
+        <file>layers.png</file>
+        <file>add.png</file>
+        <file>delete(1).png</file>
+        <file>delete.png</file>
+        <file>user(1).png</file>
+        <file>user.png</file>
+        <file>archive.png</file>
+        <file>text.png</file>
+        <file>font.png</file>
+        <file>info.png</file>
+        <file>update.png</file>
+        <file>test.png</file>
+        <file>play.png</file>
+    </qresource>
+</RCC>
