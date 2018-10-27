@@ -157,31 +157,26 @@ class Dataset
 public:
 	Dataset(int _Num_Features, int _Num_PHNs, int _Last_s);
 	~Dataset();
-	void Get_Frame(float *InBuff, int InBuff_Length,  int Start_InBuff, int End_InBuff);
 
 	int Max_InBuff_Length;
 	int Seg_Length;
 	int Ind_Allocated;
-	static int Ind_Filled;
+    int Ind_Filled;
 	int Ind_Filled_Circular;
 	int Num_Features;
-
+    int distances_index;
 	int Num_Phns;
 	int Dist_dim;
+    int startOfSpeechIndicator;
+    int endOfSpeechIndicator;
+    int First_Frame;
+    int Last_Frame;
 	double **Features_Circular;
 	infra:: matrix Features;
+    infra::matrix *scores;
+    infra::matrix *distances;
 
-	static infra::matrix *scores;
-	//static int scores_index;
-	static infra::matrix *distances;
-	static int distances_index;
-
-	static int Start_Speech;
-	static int End_Speech;
-
-	int First_Frame;
-	int Last_Frame;
-
+    void Get_Frame(float *InBuff, int InBuff_Length,  int Start_InBuff, int End_InBuff);
 };
 
 

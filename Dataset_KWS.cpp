@@ -36,14 +36,6 @@ unsigned int PhonemeSequence::numOfPhonemes;
 std::map<std::string, int> PhonemeSequence::phoneme2index;
 std::map<int,std::string> PhonemeSequence::index2phoneme;
 std::string PhonemeSequence::silenceSymbol;
-	int Dataset::Ind_Filled;
-	infra::matrix * Dataset::scores;
-	
-	infra::matrix * Dataset::distances;
-	int Dataset::distances_index;
-
-	int Dataset::Start_Speech;
-	int Dataset::End_Speech;
 
 /************************************************************************
 Function:     PhonemeSequence::load_phoneme_map
@@ -241,8 +233,8 @@ Num_Features(_Num_Features), Num_Phns(_Num_PHNs), Dist_dim(_Last_s)
 	//scores.resize(Seg_Length,Num_Phns);
 	//distances.resize(Seg_Length,Dist_dim);
 
-	Start_Speech = 0;
-	End_Speech = 0;
+    startOfSpeechIndicator = 0;
+    endOfSpeechIndicator = 0;
 	//scores_index = -1;
 	distances_index = -1;
 	

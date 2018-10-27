@@ -1150,17 +1150,16 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
                 processList.append(input);
             }
 
-            scale(input);
+//            scale(input);
         }
 
-//        qDebug() << "vajegangui: 1077";
-//        futureWatcher.setFuture(QtConcurrent::mapped(processList, scale));
-//        dialog.exec();
-//        futureWatcher.waitForFinished();
+        futureWatcher.setFuture(QtConcurrent::mapped(processList, scale));
+        dialog.exec();
+        futureWatcher.waitForFinished();
 
-//        dialog.setValue((progressCounter * 1.0 / maxRange) * 100);
-//        if(futureWatcher.isCanceled())
-//            return;
+        dialog.setValue((progressCounter * 1.0 / maxRange) * 100);
+        if(futureWatcher.isCanceled())
+            return;
 
         int urlIndex = 0;
         QFutureIterator<kwsResult> futureIterator(futureWatcher.future());

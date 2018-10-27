@@ -42,7 +42,7 @@ public:
     float **ModelsBuffer;
 
     void predict(Dataset& dataset);
-	void ceps_dist(Dataset& x);
+    void ceps_dist(Dataset& dataset);
     void loadPhonemeClassifier(std::string &filename);
     void deletePhonemeClassifier(void);
     void averaging();
@@ -75,9 +75,9 @@ public:
 	int Prev_Buff_Analyzed;
     unsigned int frameRate;
 
-    void alignKeyword(PhonemeSequence& key_w, int Buff_Length, int In_Buff_Start, int In_Buff_End);
-    infra::vector_view phi_1(double Phn_Mean, double Phn_Std, int KW_size, int Phn, int t, int l);
-    double phi_2(double Phn_Mean, double Prev_Phn_Mean, int KW_size, int t, int l1, int l2);
+    void alignKeyword(PhonemeSequence& phonemeSequence, Dataset &dataset);
+    infra::vector_view phi_1(Dataset &dataset, double phonemeMean, double phonemeStd, int keywordSize, int phoneme, int endTime, int phonemeLength);
+    double phi_2(double phonemeMean, double previousPhonemMean, int keywordSize, int phonemeLength, int previousPhonemeLength);
     double gaussian(const double x, const double mean, const double std);
 };
 

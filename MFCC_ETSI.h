@@ -18,77 +18,49 @@
 #include    <math.h>
 #include    <stdlib.h>
 #include    <string>
-//#include    <conio.h>
 
 
-/*----------------------
-* Constant Definitions
-*----------------------*/
 #define M_PI        3.14159265358979323846
 #define M_SQRT2     1.41421356237309504880
-
 #define PI          M_PI
 #define PIx2        6.28318530717958647692
-
 #define ENERGYFLOOR_FB        -50.0  /*0.0 */
 #define ENERGYFLOOR_logE      -50.0  /*4.0 */
 
 
-/*-----------------
-* Data Structures
-*-----------------*/
+using namespace std;
+
 typedef struct FFT_Window_tag
 {
 	int StartingPoint;
 	int Length;
 	float *Data;
 	struct FFT_Window_tag *Next;
-}
-FFT_Window;                     /* Structure for FFT window (one triangle in
-								the chained list) */
+} FFT_Window;
 
-/*class FFT_Window
-{
-public:
-	int StartingPoint;
-	int Length;
-	float *Data;
-	FFT_Window *Next;
-};  */ 
 
-/***********************************************************************/
-class FeatureExtracting // My Added Class
+class FeatureExtracting
 {
 public:
 	FeatureExtracting();
 	~FeatureExtracting();
 
-	static void load_feature_extraction_parameters(std::string Feature_ConfigFileName,
-		std::string MFCC_StatsFileName);
+    static void load_feature_extraction_parameters(std::string Feature_ConfigFileName, string MFCC_StatsFileName);
 	static void delete_feature_extraction_parameters(void);
 	float * maindtdt(int n_frame,float *cep);
 	
-	/*---------------------
-	* Function Prototypes
-	*---------------------*/
 	void DCOffsetFilter( float *CircBuff, int BSize, int *BPointer, int nSamples );
 	void InitializeHamming (float *win, int len);
 	void Window (float *data, float *win, int len);
 	void rfft (float *x, int n, int m);
-	void InitFFTWindows (FFT_Window * FirstWin,
-		float StFreq,
-		float SmplFreq,
-		int FFTLength,
-		int NumChannels);
+    void InitFFTWindows (FFT_Window * FirstWin, float StFreq, float SmplFreq, int FFTLength, int NumChannels);
 	void ReleaseFFTWindows (FFT_Window *FirstWin );
 	void ComputeTriangle (FFT_Window * FirstWin);
-	void MelFilterBank (float *SigFFT, FFT_Window * FirstWin);
-
-	float *InitDCTMatrix (int NumCepstralCoeff, int NumChannels);
+    void MelFilterBank (float *SigFFT, FFT_Window * FirstWin);
 	void DCT (float *Data, float *Mx, int NumCepstralCoeff, int NumChannels);
+    void CMS_Live(float *incep, int nfr);
 
-	
-	void CMS_Live(float *incep, int nfr);
+    float *InitDCTMatrix (int NumCepstralCoeff, int NumChannels);
 
 	int ReadWaveFromBuffer (float *InBuff, int InBuffSize, int *InBuffPointer,
 						float *CircBuff, int CircBuffSize, int CircBuffPointer, int nSamples);

@@ -94,7 +94,7 @@ Output:       int - always 0.
 Comments:     none.
 ***********************************************************************/
 int extractFeatures(PhonemeClassifier &phonemeClassifier,
-                       Dataset &DataSet,
+                       Dataset &dataSet,
                        FeatureExtracting &featureExtracting,
                        float *inputSignal,
                        int inputSignalLength,
@@ -102,97 +102,95 @@ int extractFeatures(PhonemeClassifier &phonemeClassifier,
                        int lastBufferIndicator)
 {
     // Feature extraction phase for input buffer
-    float *Feat_Buffer;
+    float *featuresBuffer;
 
     int Status;
 
-    int TmpBuff_Size = featureExtracting.PrevBuff_Size+inputSignalLength;
+    int temporaryBufferSize = featureExtracting.PrevBuff_Size + inputSignalLength;
 
-    int Num_Frames = 1+((TmpBuff_Size-FeatureExtracting::FrameLength)/FeatureExtracting::FrameShift);
+    int Num_Frames = 1+((temporaryBufferSize - featureExtracting.FrameLength) / featureExtracting.FrameShift);
 
-    int Temp = FeatureExtracting::Feature_Dim*3;
+    int Temp = featureExtracting.Feature_Dim * 3;
 
-    Feat_Buffer = new float[Num_Frames*Temp];
+    featuresBuffer = new float[Num_Frames * Temp];
 
     float *Wav_Buffer_Temp;
-    Wav_Buffer_Temp = new float[TmpBuff_Size];
+    Wav_Buffer_Temp = new float[temporaryBufferSize];
     memcpy(&Wav_Buffer_Temp[0], featureExtracting.Prev_Wav_samples, sizeof(float)*featureExtracting.PrevBuff_Size);
     memcpy(&Wav_Buffer_Temp[featureExtracting.PrevBuff_Size], inputSignal, sizeof(float)*inputSignalLength);
 
-    Status = featureExtracting.MFCC_Extractor(Wav_Buffer_Temp, TmpBuff_Size, Feat_Buffer);
+    Status = featureExtracting.MFCC_Extractor(Wav_Buffer_Temp, temporaryBufferSize, featuresBuffer);
+    featureExtracting.Total_Num_Frames += Status - 3 - 3; //the number 3 is set because of the delta coefficients which are computer across 3 frames on the left& right side of the central frame
 
-    FeatureExtracting::Total_Num_Frames += Status-3-3; //the number 3 is set because of the delta coefficients which are computer across 3 frames on the left& right side of the central frame
-    int Num_Prev_remained_samples = (TmpBuff_Size-featureExtracting.FrameLength)%featureExtracting.FrameShift;
-    featureExtracting.PrevBuff_Size = (FeatureExtracting::FrameLength+(5*FeatureExtracting::FrameShift))+Num_Prev_remained_samples;
+    int Num_Prev_remained_samples = (temporaryBufferSize-featureExtracting.FrameLength)%featureExtracting.FrameShift;
+    featureExtracting.PrevBuff_Size = (featureExtracting.FrameLength + (5 * featureExtracting.FrameShift))+Num_Prev_remained_samples;
+
     int ind_Prev_samples = inputSignalLength-featureExtracting.PrevBuff_Size;
+
     delete []featureExtracting.Prev_Wav_samples;
+
     featureExtracting.Prev_Wav_samples = new float[featureExtracting.PrevBuff_Size];
     memcpy(featureExtracting.Prev_Wav_samples, &inputSignal[ind_Prev_samples], sizeof(float)*featureExtracting.PrevBuff_Size);
+
     delete []Wav_Buffer_Temp;
 
     // Writing extracted features in required data arrays of the class  FeatureSegments_KWS
-
     if (firstBufferIndicator)
     {
 //        if (Dataset::scores != NULL)
 //            delete Dataset::scores;
-        Dataset::scores = new infra::matrix;
-        Dataset::scores->resize(DataSet.Seg_Length,DataSet.Num_Phns);
+        dataSet.scores = new infra::matrix;
+        dataSet.scores->resize(dataSet.Seg_Length,dataSet.Num_Phns);
 
 //        if (Dataset::distances != NULL)
 //            delete Dataset::distances;
-        Dataset::distances = new infra::matrix;
-        Dataset::distances->resize(DataSet.Seg_Length,DataSet.Dist_dim);
+        dataSet.distances = new infra::matrix;
+        dataSet.distances->resize(dataSet.Seg_Length,dataSet.Dist_dim);
 
         Num_Frames -= 9;
-        DataSet.Get_Frame(&Feat_Buffer[6*Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
+        dataSet.Get_Frame(&featuresBuffer[6 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
     }
     else if (lastBufferIndicator)
     {
-        Dataset::distances_index = Dataset::distances_index-3;
+        dataSet.distances_index = dataSet.distances_index - 3;
         Num_Frames -= 3;
-        DataSet.Get_Frame(&Feat_Buffer[3*Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
+        dataSet.Get_Frame(&featuresBuffer[3 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
     }
     else
     {
-        Dataset::distances_index = Dataset::distances_index-3;
+        dataSet.distances_index = dataSet.distances_index - 3;
         Num_Frames -= 6;
-        DataSet.Get_Frame(&Feat_Buffer[3*Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
+        dataSet.Get_Frame(&featuresBuffer[3 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
     }
-    delete[] Feat_Buffer;
+    delete[] featuresBuffer;
 
     // Calculating Phoneme Classifier Score for new Input Buffer
-    phonemeClassifier.predict(DataSet);
+    phonemeClassifier.predict(dataSet);
 
     // Calculating Distance Matrix for new Input Buffer
-    phonemeClassifier.ceps_dist(DataSet);
+    phonemeClassifier.ceps_dist(dataSet);
 
-
-    Dataset::Start_Speech = firstBufferIndicator;
-    Dataset::End_Speech = lastBufferIndicator;
+    dataSet.startOfSpeechIndicator = firstBufferIndicator;
+    dataSet.endOfSpeechIndicator = lastBufferIndicator;
 
     return 1;
 }
 
 /************************************************************************/
-int keywordSpotter(PhonemeSequence &phonemeSequence, KeywordClassifier &keywordClassifier)
+int keywordSpotter(PhonemeSequence &phonemeSequence, KeywordClassifier &keywordClassifier, Dataset &dataset)
 {
-    int Temp = Dataset::distances_index;
     while (1)
     {
-        int Start_Buff = Dataset::Start_Speech;
-        int Final_Buff = Dataset::End_Speech;
-        Temp = Dataset::distances_index;
-        if (keywordClassifier.Prev_Buff_Analyzed<Temp)
+        if (keywordClassifier.Prev_Buff_Analyzed < dataset.distances_index)
         {
             // predict
-            keywordClassifier.alignKeyword(phonemeSequence, Temp, Start_Buff, Final_Buff);
-            keywordClassifier.Prev_Buff_Analyzed = Temp;
+            keywordClassifier.alignKeyword(phonemeSequence, dataset);
+            keywordClassifier.Prev_Buff_Analyzed = dataset.distances_index;
         }
-        if (Final_Buff==1)
+        if (dataset.endOfSpeechIndicator == 1)
             return 0;
-
     }
+
     return -1;
 }
 
@@ -255,11 +253,11 @@ float Vajegan(float *inputSignal,
     phonemeSequence = new PhonemeSequence(word, word.length());
     phonemeSequence->setSilenceSymbol(silenceSymbol);
 
-    Dataset *Data;
-    Data = new Dataset(FeatureExtracting::Feature_Dim*3, phonemeSequence->numOfPhonemes, phonemeClassifier.last_s);
+    FeatureExtracting *featurExtracting;
+    featurExtracting = new FeatureExtracting();
 
-    FeatureExtracting * Feat;
-    Feat = new FeatureExtracting();
+    Dataset *dataset;
+    dataset = new Dataset(featurExtracting->Feature_Dim * 3, phonemeSequence->numOfPhonemes, phonemeClassifier.last_s);
 
 
     int featuresBufferSize, fixedBufferSize = 4096;
@@ -288,15 +286,15 @@ float Vajegan(float *inputSignal,
             temp_input[i] = inputSignal[sampleCounter++];
         }
 
-        extractFeatures(phonemeClassifier, *Data, *Feat, temp_input, featuresBufferSize, firstBufferIndicator, lastBufferIndicator);
+        extractFeatures(phonemeClassifier, *dataset, *featurExtracting, temp_input, featuresBufferSize, firstBufferIndicator, lastBufferIndicator);
 
         firstBufferIndicator = 0;
     }
 
     // Start KWS for explore input file stream
-    keywordSpotter(*phonemeSequence, *keywordClassifier);
+    keywordSpotter(*phonemeSequence, *keywordClassifier, *dataset);
 
-    delete Data;
+    delete dataset;
     delete phonemeSequence;
 
     t2 = clock();

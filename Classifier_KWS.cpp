@@ -43,7 +43,6 @@ Inputs:       none.
 Output:       none.
 Comments:     none.
 ***********************************************************************/
-
 KeywordClassifier::KeywordClassifier(int numOfPhonemes)
 {
     Prev_While_Status = 0;
@@ -64,7 +63,6 @@ Inputs:       none.
 Output:       none.
 Comments:     none.
 ***********************************************************************/
-
 KeywordClassifier::~KeywordClassifier()
 {
     delete[]  y_hat_best;
@@ -81,37 +79,33 @@ int l - phoneme length
 Output:       infra::vector_view
 Comments:     none.
 ***********************************************************************/
-infra::vector_view KeywordClassifier::phi_1(double Phn_Mean, double Phn_Std, int KW_size,
-                                            int Phn,  // phoneme
-                                            int t, // phoneme end time
-                                            int l) // phoneme length
+infra::vector_view KeywordClassifier::phi_1(Dataset &dataset,
+                                            double phonemeMean,
+                                            double phonemeStd,
+                                            int keywordSize,
+                                            int phoneme,
+                                            int endTime,
+                                            int phonemeLength)
 {
     infra::vector v(phi_size-1);
-    //v.zeros();
     double Temp = 0;
-    //int Temp = keyword.Current_KW;
-    for (int tau = t-l+1; tau <= t; tau++){
-        //if (x.scores_index < tau)
-        //	PFB_C.predict(x, tau);
-        Temp +=  (*Dataset::scores)(tau,Phn);
+
+    for (int tau = endTime-phonemeLength+1; tau <= endTime; tau++){
+        Temp +=  (*dataset.scores)(tau, phoneme);
     }
 
 #ifdef NORM_TYPE1
-    Temp /= l;
+    Temp /= phonemeLength;
 #endif
 
-    //if (x.distances_index < (t-l+1))
-    //	ceps_dist(x,t-l+1);
-
-    v(1) = beta1*(*Dataset::distances)(t-l+1,0)/KW_size;
-    v(2) = beta1*(*Dataset::distances)(t-l+1,1)/KW_size;
-    v(3) = beta1*(*Dataset::distances)(t-l+1,2)/KW_size;
-    v(4) = beta1*(*Dataset::distances)(t-l+1,3)/KW_size;
-    v(5) = beta2*gaussian(l, Phn_Mean, Phn_Std)/KW_size;
+    v(1) = beta1 * (*dataset.distances)(endTime - phonemeLength+1,0) / keywordSize;
+    v(2) = beta1 * (*dataset.distances)(endTime - phonemeLength+1,1) / keywordSize;
+    v(3) = beta1 * (*dataset.distances)(endTime - phonemeLength+1,2) / keywordSize;
+    v(4) = beta1 * (*dataset.distances)(endTime - phonemeLength+1,3) / keywordSize;
+    v(5) = beta2 * gaussian(phonemeLength, phonemeMean, phonemeStd) / keywordSize;
 
 #ifdef NORM_TYPE3
-    v(0) = Temp/KW_size;
-    //v /=  KW_size;
+    v(0) = Temp/keywordSize;
 #endif
     return v;
 }
@@ -128,19 +122,18 @@ int l2 - previous phoneme length
 Output:       infra::vector_view
 Comments:     none.
 ***********************************************************************/
-double KeywordClassifier::phi_2(double Phn_Mean, double Prev_Phn_Mean,
-                                int KW_size,
-                                int t, // phoneme end time
-                                int l1, // phoneme length
-                                int l2) // previous phoneme len
+double KeywordClassifier::phi_2(double phonemeMean,
+                                double previousPhonemMean,
+                                int keywordSize,
+                                int phonemeLength,
+                                int previousPhonemeLength)
 {
     double v = 0;
-    v = (double(l1)/Phn_Mean -
-         double(l2)/Prev_Phn_Mean);
+    v = (double(phonemeLength) / phonemeMean - double(previousPhonemeLength) / previousPhonemMean);
     v *= v;
     v *= beta3;
 #ifdef NORM_TYPE3
-    v /= KW_size;
+    v /= keywordSize;
 #endif
     return v;
 }
@@ -154,63 +147,39 @@ StartTimeSequence &y_hat
 Output:       void
 Comments:     none.
 ***********************************************************************/
-void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
-                                     int Buff_Length, int In_Buff_Start, int In_Buff_End)
+void KeywordClassifier::alignKeyword(PhonemeSequence &phonemeSequence, Dataset &dataset)
 {
-
-    double My_tmp_Var = 0;
-    //int Phn_min_Length;
-    //int Phn_max_Length;
-
-    int T;
-
-    int L = maxNumberOfFrames+1;
-    int best_s ;
     int end_frame;
-    StartTimeSequence y_hat;
-    std::vector < int >  y_hat_best_Tmp;
-    double D1, D2, D2_max = MISPAR_KATAN_MEOD; // helper variables
-    double D0_best_best = MISPAR_KATAN_MEOD;
-
     int *pred_l;
     int *pred_t;
-
-
     int s, s_end;
-
-    bool End_Search = false;
-
-    End_Search = false;
-    int P = key_w.keywordPhonemesIndices.size();
-
-
-    std::vector < int > KW_temp;
     int phn_temp;
+    int P = phonemeSequence.keywordPhonemesIndices.size();
+    int distanceIndex = dataset.distances_index;
+    int L = maxNumberOfFrames+1;
     double phn0_mean, phn0_std, phn_mean, phn_std, Prev_phn_mean;
+    double D1, D2, D2_max = MISPAR_KATAN_MEOD;
+
+    StartTimeSequence y_hat;
+    std::vector < int >  y_hat_best_Tmp;
+    std::vector < int > KW_temp;
 
 
     pred_l = new int[P];
     pred_t = new int[P];
 
-
-    best_s = 0;
     y_hat.resize(P);
 
+    threeDimArray<int> prev_l(P,distanceIndex,L);
+    threeDimArray<int> prev_t(P,distanceIndex,L);
+    threeDimArray<double> D0(P,distanceIndex,L);
 
-    T = Buff_Length;
-
-
-    threeDimArray<int> prev_l(P,T,L);
-    threeDimArray<int> prev_t(P,T,L);
-    threeDimArray<double> D0(P,T,L);
-
-    if (In_Buff_End)
+    if (dataset.endOfSpeechIndicator)
     {
-        s_end = T-P*minNumberOfFrames;
-        End_Search = true;
+        s_end = distanceIndex-P*minNumberOfFrames;
     }
     else
-        s_end = T-P*maxNumberOfFrames;
+        s_end = distanceIndex-P*maxNumberOfFrames;
 
     s = s_start;
 
@@ -222,30 +191,20 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
             t_temp = s;
         else
             t_temp = s-maxNumberOfFrames;
+
         // Initialization
         for (int i = 0; i < P; i++)
-            for (int t = t_temp; t < T; t++)
+            for (int t = t_temp; t < distanceIndex; t++)
                 for (int l1 = 0; l1 < L; l1++)
                     D0(i,t,l1) = MISPAR_KATAN_MEOD;
 
-        // Here calculate the calculation for the culculata
-        /*
-        Phn_min_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][0]]-phoneme_length_std[keyword.KWsPhnInds[KW_Num][0]])-1;
-        Phn_max_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][0]]+phoneme_length_std[keyword.KWsPhnInds[KW_Num][0]])+1;
-        if (Phn_min_Length<min_num_frames)
-        Phn_min_Length = min_num_frames;
-        if (Phn_max_Length>max_num_frames)
-        Phn_max_Length = max_num_frames;
-        int t_start = s+Phn_min_Length;
-        int t_end = _min(s+Phn_max_Length,T);*/
-        KW_temp = key_w.keywordPhonemesIndices;
-        phn_temp =  key_w.keywordPhonemesIndices[0];
+        KW_temp = phonemeSequence.keywordPhonemesIndices;
+        phn_temp =  phonemeSequence.keywordPhonemesIndices[0];
         phn0_mean = phonemeLengthMeanVector[phn_temp];
         phn0_std = phonemeLengthStdVector[phn_temp];
-        for (int t = s+minNumberOfFrames; t < _min(s+maxNumberOfFrames,T); t++)
+        for (int t = s+minNumberOfFrames; t < _min(s+maxNumberOfFrames,distanceIndex); t++)
         {
-            D0(0,t,t-s+1) = weigths.subvector(0,phi_size-1) * phi_1(phn0_mean, phn0_std, P, phn_temp, t, t-s+1);
-            My_tmp_Var = D0(0,t,t-s+1);
+            D0(0,t,t-s+1) = weigths.subvector(0,phi_size-1) * phi_1(dataset, phn0_mean, phn0_std, P, phn_temp, t, t-s+1);
         }
 
         // Recursion
@@ -255,59 +214,39 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
             phn_std = phonemeLengthStdVector[phn_temp];
             Prev_phn_mean = phonemeLengthMeanVector[KW_temp[i-1]];
 
-            /*
-            Phn_min_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][i]]-phoneme_length_std[keyword.KWsPhnInds[KW_Num][i]])-1;
-            Phn_max_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][i]]+phoneme_length_std[keyword.KWsPhnInds[KW_Num][i]])+1;
-            if (Phn_min_Length<min_num_frames)
-            Phn_min_Length = min_num_frames;
-            if (Phn_max_Length>max_num_frames)
-            Phn_max_Length = max_num_frames;*/
-            for (int t = s+i*minNumberOfFrames; t < _min(s+i*maxNumberOfFrames, T); t++) {
+            for (int t = s+i*minNumberOfFrames; t < _min(s+i*maxNumberOfFrames, distanceIndex); t++)
+            {
                 int stop_l1_at = (t < maxNumberOfFrames) ? t : maxNumberOfFrames;
-                for (int l1 = minNumberOfFrames; l1 <= stop_l1_at; l1++) {
-                    D1 = weigths.subvector(0,phi_size-1) * phi_1(phn_mean, phn_std, P, phn_temp,t,l1);
+                for (int l1 = minNumberOfFrames; l1 <= stop_l1_at; l1++)
+                {
+                    D1 = weigths.subvector(0,phi_size-1) * phi_1(dataset, phn_mean, phn_std, P, phn_temp,t,l1);
                     D2_max = MISPAR_KATAN_MEOD;
-                    /*
-                    int Prev_Phn_min_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][i-1]]-phoneme_length_std[keyword.KWsPhnInds[KW_Num][i-1]])-1;
-                    int Prev_Phn_max_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][i-1]]+phoneme_length_std[keyword.KWsPhnInds[KW_Num][i-1]])+1;
-                    if (Prev_Phn_min_Length<min_num_frames)
-                    Prev_Phn_min_Length = min_num_frames;
-                    if (Prev_Phn_max_Length>max_num_frames)
-                    Prev_Phn_max_Length = max_num_frames;*/
-                    for (int l2 = minNumberOfFrames; l2 <= maxNumberOfFrames; l2++) {
-                        D2 = D0(i-1,t-l1,l2) + weigths(phi_size-1) * phi_2(phn_mean, Prev_phn_mean, P,t,l1,l2);
-                        My_tmp_Var = D0(i-1,t-l1,l2);
-                        //My_tmp_Var = w(phi_size-1) * phi_2(x, phn_mean, Prev_phn_mean, P, t,l1,l2);
-                        if (D2 > D2_max) {
+
+                    for (int l2 = minNumberOfFrames; l2 <= maxNumberOfFrames; l2++)
+                    {
+                        D2 = D0(i-1,t-l1,l2) + weigths(phi_size-1) * phi_2(phn_mean, Prev_phn_mean, P,l1,l2);
+
+                        if (D2 > D2_max)
+                        {
                             D2_max = D2;
                             prev_l(i,t,l1) = l2;
                             prev_t(i,t,l1) = t-l1;
                         }
                     }
                     D0(i,t,l1) = D1 + D2_max;
-                    //cout << "D0= " << D1 + D2_max << endl;
-
                 }
             }
         }
 
         // Termination
         D2_max = MISPAR_KATAN_MEOD;
-        /*
-        Phn_min_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][P-1]]-phoneme_length_std[keyword.KWsPhnInds[KW_Num][P-1]])-1;
-        Phn_max_Length = int(phoneme_length_mean[keyword.KWsPhnInds[KW_Num][P-1]]+phoneme_length_std[keyword.KWsPhnInds[KW_Num][P-1]])+1;
-        if (Phn_min_Length<min_num_frames)
-        Phn_min_Length = min_num_frames;
-        if (Phn_max_Length>max_num_frames)
-        Phn_max_Length = max_num_frames;
-        */
-#if 1	 
-        for (int t=s+(P-1)*minNumberOfFrames; t<_min(s+(P-1)*maxNumberOfFrames, T); t++)  {
-#else
-        { int t = T-1;
-#endif
-            for (int l = minNumberOfFrames; l <= maxNumberOfFrames; l++) {
-                if (D0(P-1,t,l) > D2_max) {
+
+        for (int t=s+(P-1)*minNumberOfFrames; t<_min(s+(P-1)*maxNumberOfFrames, distanceIndex); t++)
+        {
+            for (int l = minNumberOfFrames; l <= maxNumberOfFrames; l++)
+            {
+                if (D0(P-1,t,l) > D2_max)
+                {
                     D2_max = D0(P-1,t,l);
                     pred_l[P-1] = l;
                     pred_t[P-1] = t;
@@ -315,6 +254,7 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
             }
         }
         y_hat[P-1] = pred_t[P-1]-pred_l[P-1]+1;
+
         // Back-tracking
         for (short p = P-2; p >= 0; p--) {
             pred_l[p] = prev_l(p+1,pred_t[p+1],pred_l[p+1]);
@@ -328,28 +268,13 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
 #ifdef NORM_TYPE2
         D2_max /= (end_frame-s+1);
 #endif	
-        /*
-                if (D2_max > D0_best_best)
-                {
-                    std::cout << "s=" << s << " D2_max=" << D2_max << " D0_best=" << D0_best_best << std::endl;
-                    D0_best_best = D2_max;
-                    //for (int i = 0; i < P; i++)
-                    //	y_hat_best_best[KW_Num][i] = y_hat[i];
-                    //y_hat_best_best[KW_Num][P] = end_frame;
-
-                }
-*/
         s += s_Step;
-        //s += s_Step;
         s_start = s;
-
-
 
         if (D2_max>=userDefinedThreshold)
             if (D2_max > D0_best)
             {
                 D0_best = D2_max;
-                best_s = s;
                 for (int i = 0; i < P; i++)
                     y_hat_best[i] = y_hat[i];
                 y_hat_best[P] = end_frame;
@@ -363,12 +288,8 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
                     y_hat_best_Tmp.resize(P+1);
                     for (int i = 0; i <= P; i++)
                         y_hat_best_Tmp[i] = y_hat_best[i];
-                    //                    cout << "keyword=/" << key_w.KWPhnInds << "/ Found!!!!!"<< endl;
-                    //                    cout << "alignment= " << y_hat_best_Tmp << endl;
-                    //                    cout << "confidence= " << D0_best << endl;
                     timeAligns.push_back(y_hat_best_Tmp);
                     confidence.push_back(D0_best);
-                    //cout << "T= " << T << endl;
                     D0_best = MISPAR_KATAN_MEOD;
                     s_start = y_hat_best[P];
                     Prev_While_Status = 0;
@@ -380,20 +301,14 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
         else
             if (Prev_While_Status==1)
             {
-                //cout << "Intered Prev_While_Status" << endl;
-                //cout << "Num_Following_Searched = " << Num_Following_Searched[KW_Num] << endl;
                 if(Num_Following_Searched == 3)
                 {
                     y_hat_best_Tmp.clear();
                     y_hat_best_Tmp.resize(P+1);
                     for (int i = 0; i <= P; i++)
                         y_hat_best_Tmp[i] = y_hat_best[i];
-                    //					cout << "keyword=/" << key_w.KWPhnInds << "/ Found!!!!!"<< endl;
-                    //					cout << "alignment= " << y_hat_best_Tmp << endl;
-                    //					cout << "confidence= " << D0_best << endl;
                     timeAligns.push_back(y_hat_best_Tmp);
                     confidence.push_back(D0_best);
-                    //cout << "T= " << T << endl;
                     D0_best = MISPAR_KATAN_MEOD;
                     s_start = y_hat_best[P];
                     Prev_While_Status = 0;
@@ -404,7 +319,6 @@ void KeywordClassifier::alignKeyword(PhonemeSequence& key_w,
             }
         s = s_start;
     }
-
 
     delete [] pred_l;
     delete[] pred_t;
@@ -423,9 +337,6 @@ double KeywordClassifier::gaussian(const double x, const double mean, const doub
     double d = (1/sqrt(2*3.141529)/std * exp(-((x-mean)*(x-mean)) / (2*std*std) ));
     return (d);
 }
-
-
-// --------------------- End of KWS Classifier ------------------------------------//
 
 /************************************************************************
 Function:     Classifier_Phn::Classifier_Phn
@@ -454,6 +365,7 @@ Comments:     none.
 PhonemeClassifier::~PhonemeClassifier()
 {
 }
+
 /************************************************************************
 Function:     ceps_dist
 
@@ -462,30 +374,32 @@ Inputs:       SpeechUtterance_KWS& x
 Output:       void.
 Comments:     this function is added from HTK-ceps-dist file
 ***********************************************************************/
-void PhonemeClassifier::ceps_dist(Dataset& x)
+void PhonemeClassifier::ceps_dist(Dataset& dataset)
 {
     // Compute all distances. Run over all possible alignment landmarks y_i
     infra::vector w(last_s);
 
-    for (int Frame_Num = x.distances_index+1; Frame_Num<x.Last_Frame; Frame_Num++)
+    for (int Frame_Num = dataset.distances_index+1; Frame_Num<dataset.Last_Frame; Frame_Num++)
     {
-
-
-        for (int s = 1; s <= last_s; s++) {
+        for (int s = 1; s <= last_s; s++)
+        {
             // define -1 to be the distance of undeined regions
-            if (Frame_Num-s < 0 || Frame_Num+s-1 >= x.Ind_Filled) {
+            if (Frame_Num-s < 0 || Frame_Num+s-1 >= dataset.Ind_Filled)
+            {
                 w(s-1) = -1;
             }
-            else {
+            else
+            {
                 w(s-1) = 0;
                 for (int j=1; j <= s; j++)
-                    w(s-1) += (x.Features.row(Frame_Num-j) - x.Features.row(Frame_Num+j-1)).norm2();
+                    w(s-1) += (dataset.Features.row(Frame_Num-j) - dataset.Features.row(Frame_Num+j-1)).norm2();
+
                 w(s-1) /= s;
             }
-            (*Dataset::distances)(Frame_Num, s-1) = w(s-1);
+            (*dataset.distances)(Frame_Num, s-1) = w(s-1);
         }
 
-        x.distances_index = Frame_Num;
+        dataset.distances_index = Frame_Num;
     }
 
 }
@@ -535,11 +449,12 @@ void PhonemeClassifier::predict(Dataset& dataset)
         //max_scores =1;
 #ifdef NORM_SCORES_0_1
         for (uint j = 0; j < ranks.size(); j++)
-            (*Dataset::scores)(Frame_Num, j) = (ranks(j)-min_scores)/(max_scores-min_scores);
+            (*dataset.scores)(Frame_Num, j) = (ranks(j)-min_scores)/(max_scores-min_scores);
 #else
         x.scores(Frame_num, j) = ranks(j)-max_scores;
 #endif
         //FeatureSegments_KWS::scores_index = Frame_num;
+
         delete[] Scores;
     }
 }
@@ -552,6 +467,7 @@ Inputs:       none.
 Output:       none.
 Comments:     none.
 ***********************************************************************/
+
 void PhonemeClassifier::averaging()
 {
     //    scaled_alpha.resize(alpha().height(), alpha().width());
@@ -634,6 +550,5 @@ void PhonemeClassifier::deletePhonemeClassifier(void)
 
     delete[] ModelsBuffer;
 }
-// --------------------- EOF ------------------------------------//
 
 
