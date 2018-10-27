@@ -2516,7 +2516,6 @@ void VajeganGUI::open()
                 return;
             }
 #endif
-            qDebug() << "Line: 2112";
             ui->playlistTableWidget->insertRow(ui->playlistTableWidget->rowCount());
 
             QTableWidgetItem* tableItem = new QTableWidgetItem();

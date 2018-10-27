@@ -45,7 +45,7 @@ public:
 	FeatureExtracting();
 	~FeatureExtracting();
 
-    static void load_feature_extraction_parameters(std::string Feature_ConfigFileName, string MFCC_StatsFileName);
+    static void loadFeatureExtractionParameters(string Feature_ConfigFileName, string MFCC_StatsFileName);
 	static void delete_feature_extraction_parameters(void);
 	float * maindtdt(int n_frame,float *cep);
 	

@@ -31,6 +31,7 @@ float* FeatureExtracting::cur_mean;
 int FeatureExtracting::initializeCMS;
 float* FeatureExtracting::CMS_Vector;
 float* FeatureExtracting::CVN_Vector;
+
 /************************************************************************
 Function:     Feature_Extracting::load_feature_extraction_parameters
 
@@ -39,8 +40,7 @@ Inputs:       std::string Feature_ConfigFileName, std::string MFCC_StatsFileName
 Output:       void.
 Comments:     none.
 ***********************************************************************/
-void FeatureExtracting::load_feature_extraction_parameters(std::string Feature_ConfigFileName,
-	std::string MFCC_StatsFileName)
+void FeatureExtracting::loadFeatureExtractionParameters(string Feature_ConfigFileName, string MFCC_StatsFileName)
 {
 	Total_Num_Frames = 0;
 
@@ -137,7 +137,8 @@ void FeatureExtracting::load_feature_extraction_parameters(std::string Feature_C
 	initializeCMS = 1;
 	CMS_Vector = new float[Feature_Dim*3] ();
 	CVN_Vector = new float[Feature_Dim*3] ();
-	//Description:  Read mfcc statistics from an external file
+
+    //Description:  Read mfcc statistics from an external file
 	ifs.open(MFCC_StatsFileName.c_str());
 
 	if (!ifs.good())
@@ -166,8 +167,6 @@ void FeatureExtracting::load_feature_extraction_parameters(std::string Feature_C
 			ifs >> Temp;
 			CVN_Vector[i] = atof(Temp.c_str());
 		}
-//		std::cout << "mfcc mean=" << CMS_Vector << std::endl;
-//		std::cout << "mfcc std=" << CVN_Vector << std::endl;
 	}
 	ifs.close();
 }

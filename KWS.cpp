@@ -46,43 +46,8 @@ void Initialize(string KWS_Model_File, string KWS_Model_ConfigFile, double Tresh
                 int Loop_Step, string PhnClassi_Model_File, string PHN_StatsFile, string PHN_MapFile,
                 string Feature_ConfigFile, string mfcc_stats_file)
 {
-//    // phoneme symbol to number mapping
-//    std::string Temp = "sil";
-
-//    // Load phnems map
-//    PhonemeSequence_KWS::load_phoneme_map(PHN_MapFile, Temp);
-
-    // Load KWS classifier
-//    KeywordClassifier::loadKeywordClassifier(KWS_Model_File, KWS_Model_ConfigFile, Treshold, Loop_Step);
-
-    // Load phonem states
-//    KeywordClassifier::loadPhonemeStats(PHN_StatsFile);
-
-    // Load phonems classifier
-//    PhonemeClassifier::loadPhonemeClassifier(PhnClassi_Model_File, PhonemeSequence::numOfPhonemes);
-
     // Load feature extraction configuration
-    FeatureExtracting::load_feature_extraction_parameters(Feature_ConfigFile, mfcc_stats_file);
-}
-
-/************************************************************************
-Function:     Free_Classes
-
-Description:  Freeing the arrays allocated for data minning
-Inputs:       None
-Output:       void.
-Comments:     none.
-***********************************************************************/
-void Free_Classes(void)
-{
-    //DeleteCriticalSection(&ICriticalSection);
-
-
-    std::cout << "Deleting Classifiers and Feature extracting arrays..." << std::endl;
-//    PhonemeClassifier::deletePhonemeClassifier();
-    std::cout << "Classifiers arrays Deleted." << std::endl;
-    FeatureExtracting::delete_feature_extraction_parameters();
-    std::cout << "Feature extracting arrays Deleted." << std::endl;
+    FeatureExtracting::loadFeatureExtractionParameters(Feature_ConfigFile, mfcc_stats_file);
 }
 
 /************************************************************************
@@ -94,7 +59,7 @@ Output:       int - always 0.
 Comments:     none.
 ***********************************************************************/
 int extractFeatures(PhonemeClassifier &phonemeClassifier,
-                       Dataset &dataSet,
+                       Dataset &dataset,
                        FeatureExtracting &featureExtracting,
                        float *inputSignal,
                        int inputSignalLength,
@@ -139,39 +104,39 @@ int extractFeatures(PhonemeClassifier &phonemeClassifier,
     {
 //        if (Dataset::scores != NULL)
 //            delete Dataset::scores;
-        dataSet.scores = new infra::matrix;
-        dataSet.scores->resize(dataSet.Seg_Length,dataSet.Num_Phns);
+        dataset.scores = new infra::matrix;
+        dataset.scores->resize(dataset.Seg_Length,dataset.Num_Phns);
 
 //        if (Dataset::distances != NULL)
 //            delete Dataset::distances;
-        dataSet.distances = new infra::matrix;
-        dataSet.distances->resize(dataSet.Seg_Length,dataSet.Dist_dim);
+        dataset.distances = new infra::matrix;
+        dataset.distances->resize(dataset.Seg_Length,dataset.Dist_dim);
 
         Num_Frames -= 9;
-        dataSet.Get_Frame(&featuresBuffer[6 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
+        dataset.Get_Frame(&featuresBuffer[6 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
     }
     else if (lastBufferIndicator)
     {
-        dataSet.distances_index = dataSet.distances_index - 3;
+        dataset.distances_index = dataset.distances_index - 3;
         Num_Frames -= 3;
-        dataSet.Get_Frame(&featuresBuffer[3 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
+        dataset.Get_Frame(&featuresBuffer[3 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
     }
     else
     {
-        dataSet.distances_index = dataSet.distances_index - 3;
+        dataset.distances_index = dataset.distances_index - 3;
         Num_Frames -= 6;
-        dataSet.Get_Frame(&featuresBuffer[3 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
+        dataset.Get_Frame(&featuresBuffer[3 * Temp], Num_Frames,  firstBufferIndicator, lastBufferIndicator);
     }
     delete[] featuresBuffer;
 
     // Calculating Phoneme Classifier Score for new Input Buffer
-    phonemeClassifier.predict(dataSet);
+    phonemeClassifier.predict(dataset);
 
     // Calculating Distance Matrix for new Input Buffer
-    phonemeClassifier.cepestralsDistance(dataSet);
+    phonemeClassifier.cepestralsDistance(dataset);
 
-    dataSet.startOfSpeechIndicator = firstBufferIndicator;
-    dataSet.endOfSpeechIndicator = lastBufferIndicator;
+    dataset.startOfSpeechIndicator = firstBufferIndicator;
+    dataset.endOfSpeechIndicator = lastBufferIndicator;
 
     return 1;
 }
@@ -192,40 +157,6 @@ int keywordSpotter(PhonemeSequence &phonemeSequence, KeywordClassifier &keywordC
     }
 
     return -1;
-}
-
-/************************************************************************
-Function:     Get_result
-
-Description:  Get Keyword Spotter Results.
-Inputs:       classifier_KWS.
-Output:       void.
-Comments:     none.
-***********************************************************************/
-string Get_result(KeywordClassifier &classifier_KWS)
-{
-    ostringstream oss;
-    string str="";
-    int flag=0;
-    int Siz = classifier_KWS.confidence.size();
-//    cout<<"size fo result:"<<Siz<<endl;
-    if (Siz==0)
-        cout << "No result" << endl;
-    else
-        for (int i=0; i<Siz; i++)
-        {
-            oss<<classifier_KWS.confidence[i]<< endl<< classifier_KWS.timeAligns[i][0]/100.0 <<endl<<classifier_KWS.timeAligns[i][classifier_KWS.timeAligns[i].size()-1]/100.0 <<endl;
-        }
-
-    ofstream myfile1;
-    myfile1.open ("res.txt");
-    if (myfile1.is_open())
-    {
-        myfile1 << oss.str();
-        myfile1.close();
-    }
-    else cout << "Unable to open file";
-    return str;
 }
 
 /************************************************************************
@@ -259,12 +190,11 @@ float Vajegan(float *inputSignal,
     Dataset *dataset;
     dataset = new Dataset(featurExtracting->Feature_Dim * 3, phonemeSequence->numOfPhonemes, phonemeClassifier.last_s);
 
-
-    int featuresBufferSize, fixedBufferSize = 4096;
+    int featureExtractingBufferSize, fixedBufferSize = 4096;
     int remainedSamples = inputSignalLength;
     int sampleCounter = 0;
 
-    float temp_input[fixedBufferSize];
+    float featureExtractingBuffer[fixedBufferSize];
 
     int firstBufferIndicator = 1;
     int lastBufferIndicator = 0;
@@ -272,21 +202,21 @@ float Vajegan(float *inputSignal,
     while(remainedSamples > 0)
     {
         if (remainedSamples >= fixedBufferSize)
-            featuresBufferSize = fixedBufferSize;
+            featureExtractingBufferSize = fixedBufferSize;
         else
         {
-            featuresBufferSize = remainedSamples;
+            featureExtractingBufferSize = remainedSamples;
             lastBufferIndicator = 1;
         }
 
-        remainedSamples -= featuresBufferSize;
+        remainedSamples -= featureExtractingBufferSize;
 
-        for (int i=0; i < featuresBufferSize; i++)
+        for (int i=0; i < featureExtractingBufferSize; i++)
         {
-            temp_input[i] = inputSignal[sampleCounter++];
+            featureExtractingBuffer[i] = inputSignal[sampleCounter++];
         }
 
-        extractFeatures(phonemeClassifier, *dataset, *featurExtracting, temp_input, featuresBufferSize, firstBufferIndicator, lastBufferIndicator);
+        extractFeatures(phonemeClassifier, *dataset, *featurExtracting, featureExtractingBuffer, featureExtractingBufferSize, firstBufferIndicator, lastBufferIndicator);
 
         firstBufferIndicator = 0;
     }
@@ -296,6 +226,7 @@ float Vajegan(float *inputSignal,
 
     delete dataset;
     delete phonemeSequence;
+    delete featurExtracting;
 
     t2 = clock();
     float diff=((float)t2 - (float)t1);
