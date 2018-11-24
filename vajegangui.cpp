@@ -438,7 +438,7 @@ void VajeganGUI::bufferingProgress(int progress)
     setStatusInfo(tr("Buffering %4%").arg(progress));
 }
 
-void VajeganGUI::audioAvailableChanged()
+void VajeganGUI::audioAvailableChanged(bool flag)
 {
 }
 
@@ -662,10 +662,14 @@ void VajeganGUI::onKeywordEnteredSlot()
 
 kwsResult VajeganGUI::searchForKeywords(const kwsThreadInput &input)
 {
-    qDebug() << "in thread" << QThread::currentThreadId();
+    QElapsedTimer timer;
+    timer.start();
+
+//    qDebug() << "in thread" << QThread::currentThreadId();
     kwsResult result;
     result.confidenceSize = 0;
     result.duration = 0;
+    result.url = input.fileUrl;
 
     // Open and read the input file header
     FILE *fp_wav_in = NULL;
@@ -773,13 +777,12 @@ kwsResult VajeganGUI::searchForKeywords(const kwsThreadInput &input)
             keywordClassifier->weigths.zeros();
             keywordClassifier->weigths = input.classifierWeigths;
 
-            float diff = Vajegan(inputData,
-                                 bufferSize,
-                                 input.keyword.toStdString(),
-                                 keywordClassifier,
-                                 input.phonemeClassifier);
+            Vajegan(inputData,
+                    bufferSize,
+                    input.keyword.toStdString(),
+                    keywordClassifier,
+                    input.phonemeClassifier);
 
-            result.duration += diff / CLOCKS_PER_SEC;
             result.confidenceSize += keywordClassifier->confidence.size();
             for(unsigned int i = 0; i < keywordClassifier->confidence.size(); i++, resCounter++)
             {
@@ -794,7 +797,8 @@ kwsResult VajeganGUI::searchForKeywords(const kwsThreadInput &input)
         delete keywordClassifier;
     }
 
-    qDebug() << "Thread" << QThread::currentThreadId() << "finished";
+//    qDebug() << "Thread" << QThread::currentThreadId() << "finished";
+    result.duration = timer.elapsed();
     return result;
 }
 
@@ -809,47 +813,35 @@ void VajeganGUI::loadClassifierConfigurationFiles()
     {
 #ifdef Q_OS_LINUX
         // KWS model file path
-        keywordClassifierModelConfig = strcat(cwd, "/KWS_EssentialFiles/db_formal/models/keywordClassifierModelConfig.model");
-
-        // KWS model configuratio file path
-        getcwd(cwd, sizeof(cwd));
-        phonemClassifierConfig = strcat(cwd, "/KWS_EssentialFiles/phonemClassifierConfig");
+        keywordClassifierModelConfig = strcat(cwd, "/Config/db_formal/keywordClassifierModelConfig.model");
 
         // Phonem GMMs file path
         getcwd(cwd, sizeof(cwd));
-        phonmeModelsFileList = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/phonmeModelsFileListUnix.txt");
+        phonmeModelsFileList = strcat(cwd, "/Config/db_formal/phonmeModelsFileListUnix.txt");
 
         // Phonem states file path
         getcwd(cwd, sizeof(cwd));
-        phonemStatsConfig = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/phonemes_31.stats");
-
-        // Phonems map file path
-        getcwd(cwd, sizeof(cwd));
-        phonemeMapConfig = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/phonemes_31");
+        phonemStatsConfig = strcat(cwd, "/Config/db_formal/phonemStatsConfig.stats");
 
         // Feature extractio configuration file path
         getcwd(cwd, sizeof(cwd));
-        featureExtractionConfig = strcat(cwd, "/KWS_EssentialFiles/KWS_Feat_Config");
+        featureExtractionConfig = strcat(cwd, "/Config/featureExtractionConfig");
 
         // MFCC states file path
         getcwd(cwd, sizeof(cwd));
-        mfccStatsConfig = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/mfcc_NoCMS.stats");
+        mfccStatsConfig = strcat(cwd, "/Config/db_formal/mfccStatsConfig.stats");
 
 
 #else
-        keywordClassifierModelConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\models\\keywordClassifierModelConfig.model");
+        keywordClassifierModelConfig = strcat(cwd, "\\Config\\db_formal\\keywordClassifierModelConfig.model");
         getcwd(cwd, sizeof(cwd));
-        phonemClassifierConfig = strcat(cwd, "\\KWS_EssentialFiles\\phonemClassifierConfig");
+        phonmeModelsFileList = strcat(cwd, "\\Config\\db_formal\\phonmeModelsFileListWin.txt");
         getcwd(cwd, sizeof(cwd));
-        phonmeModelsFileList = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\phonmeModelsFileListWin.txt");
+        phonemStatsConfig = strcat(cwd, "\\Config\\db_formal\\phonemStatsConfig.stats");
         getcwd(cwd, sizeof(cwd));
-        phonemStatsConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\phonemes_31.stats");
+        featureExtractionConfig = strcat(cwd, "\\Config\\featureExtractionConfig");
         getcwd(cwd, sizeof(cwd));
-        phonemeMapConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\phonemes_31");
-        getcwd(cwd, sizeof(cwd));
-        featureExtractionConfig = strcat(cwd, "\\KWS_EssentialFiles\\KWS_Feat_Config");
-        getcwd(cwd, sizeof(cwd));
-        mfccStatsConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\mfcc_NoCMS.stats");
+        mfccStatsConfig = strcat(cwd, "\\Config\\db_formal\\mfccStatsConfig.stats");
 #endif
 
     }
@@ -857,58 +849,58 @@ void VajeganGUI::loadClassifierConfigurationFiles()
     {
 #ifdef Q_OS_LINUX
         // KWS model file path
-        keywordClassifierModelConfig = strcat(cwd, "/KWS_EssentialFiles/db_informal/models/keywordClassifierModelConfig.model");
+        keywordClassifierModelConfig = strcat(cwd, "/Config/db_informal/keywordClassifierModelConfig.model");
 
         // KWS model configuratio file path
         getcwd(cwd, sizeof(cwd));
-        phonemClassifierConfig = strcat(cwd, "/KWS_EssentialFiles/phonemClassifierConfig");
+        phonemClassifierConfig = strcat(cwd, "/Config/phonemClassifierConfig");
 
         // Phonem GMMs file path
         getcwd(cwd, sizeof(cwd));
-        phonmeModelsFileList = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/phonmeModelsFileListUnix.txt");
+        phonmeModelsFileList = strcat(cwd, "/Config/db_informal/phonmeModelsFileListUnix.txt");
 
         // Phonem states file path
         getcwd(cwd, sizeof(cwd));
-        phonemStatsConfig = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/phonemes.stats");
+        phonemStatsConfig = strcat(cwd, "/Config/db_informal/phonemStatsConfig.stats");
 
         // Phonems map file path
         getcwd(cwd, sizeof(cwd));
-        phonemeMapConfig = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/phonemes");
+        phonemeMapConfig = strcat(cwd, "/Config/db_informal/phonemes");
 
         // Feature extractio configuration file path
         getcwd(cwd, sizeof(cwd));
-        featureExtractionConfig = strcat(cwd, "/KWS_EssentialFiles/KWS_Feat_Config_tel");
+        featureExtractionConfig = strcat(cwd, "/Config/telephonyFeatureExtractionConfig");
 
         // MFCC states file path
         getcwd(cwd, sizeof(cwd));
-        mfccStatsConfig = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/mfcc_NoCMS.stats");
+        mfccStatsConfig = strcat(cwd, "/Config/db_informal/mfccStatsConfig.stats");
 #else
         // KWS model file path
-        keywordClassifierModelConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\models\\keywordClassifierModelConfig.model");
+        keywordClassifierModelConfig = strcat(cwd, "\\Config\\db_informal\\keywordClassifierModelConfig.model");
 
         // KWS model configuratio file path
         getcwd(cwd, sizeof(cwd));
-        phonemClassifierConfig = strcat(cwd, "\\KWS_EssentialFiles\\phonemClassifierConfig");
+        phonemClassifierConfig = strcat(cwd, "\\Config\\phonemClassifierConfig");
 
         // Phonem GMMs file path
         getcwd(cwd, sizeof(cwd));
-        phonmeModelsFileList = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\phonmeModelsFileListWin.txt");
+        phonmeModelsFileList = strcat(cwd, "\\Config\\db_informal\\phonmeModelsFileListWin.txt");
 
         // Phonem states file path
         getcwd(cwd, sizeof(cwd));
-        phonemStatsConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\phonemes.stats");
+        phonemStatsConfig = strcat(cwd, "\\Config\\db_informal\\phonemStatsConfig.stats");
 
         // Phonems map file path
         getcwd(cwd, sizeof(cwd));
-        phonemeMapConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\phonemes");
+        phonemeMapConfig = strcat(cwd, "\\Config\\db_informal\\phonemes");
 
         // Feature extractio configuration file path
         getcwd(cwd, sizeof(cwd));
-        featureExtractionConfig = strcat(cwd, "\\KWS_EssentialFiles\\KWS_Feat_Config_tel");
+        featureExtractionConfig = strcat(cwd, "\\Config\\telephonyFeatureExtractionConfig");
 
         // MFCC states file path
         getcwd(cwd, sizeof(cwd));
-        mfccStatsConfig = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\mfcc_NoCMS.stats");
+        mfccStatsConfig = strcat(cwd, "\\Config\\db_informal\\mfccStatsConfig.stats");
 #endif
     }
 }
@@ -970,15 +962,7 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
         PhonemeClassifier phonemeClassifier;
         phonemeClassifier.loadPhonemeClassifier(phonmeModelsFileList);
 
-        Initialize(keywordClassifierModelConfig,
-                   phonemClassifierConfig,
-                   ui->initialThresholdBox->value(),
-                   2,
-                   phonmeModelsFileList,
-                   phonemStatsConfig,
-                   phonemeMapConfig,
-                   featureExtractionConfig,
-                   mfccStatsConfig);
+        Initialize(featureExtractionConfig, mfccStatsConfig);
 
         // This part run a single thread for each file consecuently
         QProgressDialog dialog;
@@ -1044,14 +1028,13 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
                 processList.append(input);
             }
 
-//            scale(input);
+            //            scale(input);
         }
 
         futureWatcher.setFuture(QtConcurrent::mapped(processList, searchForKeywords));
         dialog.exec();
         futureWatcher.waitForFinished();
 
-//        dialog.setValue((progressCounter * 1.0 / maxRange) * 100);
         if(futureWatcher.isCanceled())
             return;
 
@@ -1067,7 +1050,7 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
                     if(res.confidence[j] >= ui->initialThresholdBox->minimum())
                     {
                         mResult.fileIndex = urlIndex + 1;
-                        mResult.filePath = "url";
+                        mResult.filePath = res.url;
                         mResult.searchDuration = res.duration;
                         mResult.startTime = res.timeAligns[j][0];
                         mResult.endTime = res.timeAligns[j][1];
@@ -1161,318 +1144,6 @@ void VajeganGUI::onSearchButtonClickedSlotMulti()
                     tr("خطا"),
                     tr("لیست پخش خالی است"));
     }
-}
-
-void VajeganGUI::onSearchButtonClickedSlot()
-{
-    //    // Remove previous results from result table
-    //    int tableSize = ui->resultTable->rowCount();
-    //    if(tableSize > 0)
-    //        while (tableSize >= 0)
-    //            ui->resultTable->removeRow(tableSize--);
-
-    //    if(urlList.size() > 0)
-    //    {
-    //        // Prepare date for history
-    //        QDateJalali Jalali;
-    //        QDateTime date =QDateTime::currentDateTime();
-    //        QStringList shamsi=  Jalali.ToShamsi(  date.toString("yyyy"), date.toString("MM"),date.toString("dd"));
-    //        QString JalailDate =shamsi.at(0)+"/"+shamsi.at(1)+"/"+shamsi.at(2);
-
-    //        // Loading keyword spotter necessary files
-    //        string KWS_Model_File_Name, KWS_Model_ConfigFile_Name, PhnClassi_Model_File_Name, PHN_StatsFile_Name, PHN_MapFile_Name, Feature_ConfigFile_Name, mfcc_stats_file_Name;
-    //        char cwd[1024];
-
-    //        getcwd(cwd, sizeof(cwd));
-
-    //        if(ui->micRadioButton->isChecked())
-    //        {
-    //#ifdef Q_OS_LINUX
-    //            // KWS model file path
-    //            KWS_Model_File_Name = strcat(cwd, "/KWS_EssentialFiles/db_formal/models/disc_keyword_spotter.beta1_0.01.beta2_1.0.beta3_1.0.9759.model");
-
-    //            // KWS model configuratio file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            KWS_Model_ConfigFile_Name = strcat(cwd, "/KWS_EssentialFiles/KWS_Model_Config");
-
-    //            // Phonem GMMs file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PhnClassi_Model_File_Name = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/GMMFileList30_linux.txt");
-
-    //            // Phonem states file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_StatsFile_Name = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/phonemes_31.stats");
-
-    //            // Phonems map file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_MapFile_Name = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/phonemes_31");
-
-    //            // Feature extractio configuration file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            Feature_ConfigFile_Name = strcat(cwd, "/KWS_EssentialFiles/KWS_Feat_Config");
-
-    //            // MFCC states file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            mfcc_stats_file_Name = strcat(cwd, "/KWS_EssentialFiles/db_formal/config/mfcc_NoCMS.stats");
-
-
-    //#else
-    //            KWS_Model_File_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\models\\disc_keyword_spotter.beta1_0.01.beta2_1.0.beta3_1.0.9759.model");
-    //            getcwd(cwd, sizeof(cwd));
-    //            KWS_Model_ConfigFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\KWS_Model_Config");
-    //            getcwd(cwd, sizeof(cwd));
-    //            PhnClassi_Model_File_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\GMMFileList30.txt");
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_StatsFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\phonemes_31.stats");
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_MapFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\phonemes_31");
-    //            getcwd(cwd, sizeof(cwd));
-    //            Feature_ConfigFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\KWS_Feat_Config");
-    //            getcwd(cwd, sizeof(cwd));
-    //            mfcc_stats_file_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_formal\\config\\mfcc_NoCMS.stats");
-    //#endif
-
-    //        }
-    //        else
-    //        {
-    //#ifdef Q_OS_LINUX
-    //            // KWS model file path
-    //            KWS_Model_File_Name = strcat(cwd, "/KWS_EssentialFiles/db_informal/models/disc_keyword_spotter.beta1_0.01.beta2_1.0.beta3_1.0.96.model");
-
-    //            // KWS model configuratio file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            KWS_Model_ConfigFile_Name = strcat(cwd, "/KWS_EssentialFiles/KWS_Model_Config");
-
-    //            // Phonem GMMs file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PhnClassi_Model_File_Name = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/GMMFileList_linux.txt");
-
-    //            // Phonem states file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_StatsFile_Name = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/phonemes.stats");
-
-    //            // Phonems map file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_MapFile_Name = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/phonemes");
-
-    //            // Feature extractio configuration file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            Feature_ConfigFile_Name = strcat(cwd, "/KWS_EssentialFiles/KWS_Feat_Config_tel");
-
-    //            // MFCC states file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            mfcc_stats_file_Name = strcat(cwd, "/KWS_EssentialFiles/db_informal/config/mfcc_NoCMS.stats");
-    //#else
-    //            // KWS model file path
-    //            KWS_Model_File_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\models\\disc_keyword_spotter.beta1_0.01.beta2_1.0.beta3_1.0.96.model");
-
-    //            // KWS model configuratio file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            KWS_Model_ConfigFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\KWS_Model_Config");
-
-    //            // Phonem GMMs file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PhnClassi_Model_File_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\GMMFileList.txt");
-
-    //            // Phonem states file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_StatsFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\phonemes.stats");
-
-    //            // Phonems map file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            PHN_MapFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\phonemes");
-
-    //            // Feature extractio configuration file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            Feature_ConfigFile_Name = strcat(cwd, "\\KWS_EssentialFiles\\KWS_Feat_Config_tel");
-
-    //            // MFCC states file path
-    //            getcwd(cwd, sizeof(cwd));
-    //            mfcc_stats_file_Name = strcat(cwd, "\\KWS_EssentialFiles\\db_informal\\config\\mfcc_NoCMS.stats");
-    //#endif
-    //        }
-
-    //        // Keywordspotter initialization
-    //        int KWS_Loop_Step = 2;
-
-    //        Initialize(KWS_Model_File_Name,
-    //                   KWS_Model_ConfigFile_Name,
-    //                   ui->initialThresholdBox->value(),
-    //                   KWS_Loop_Step,
-    //                   PhnClassi_Model_File_Name,
-    //                   PHN_StatsFile_Name,
-    //                   PHN_MapFile_Name,
-    //                   Feature_ConfigFile_Name,
-    //                   mfcc_stats_file_Name);
-
-    //        // This part run a single thread for each file consecuently
-    //        QProgressDialog dialog;
-    //        dialog.setWindowTitle("واژه یاب");
-    //        dialog.setWindowModality(Qt::WindowModal);
-    //        dialog.setLabelText(QString("در حال جستجو"));
-
-    //        QFutureWatcher<kwsResult> futureWatcher;
-    //        QObject::connect(&futureWatcher, &QFutureWatcher<void>::finished, &dialog, &QProgressDialog::reset);
-    //        QObject::connect(&dialog, &QProgressDialog::canceled, &futureWatcher, &QFutureWatcher<void>::cancel);
-    ////        QObject::connect(&futureWatcher,  &QFutureWatcher<void>::progressRangeChanged, &dialog, &QProgressDialog::setRange);
-    ////        QObject::connect(&futureWatcher, &QFutureWatcher<void>::progressValueChanged,  &dialog, &QProgressDialog::setValue);
-
-    //        // Prepare keywords container
-    //        QList<words> wordPairList;
-    //        words temp;
-
-    //        for(int i = 0; i < ui->wordlistTableWidget->rowCount(); i++)
-    //        {
-    //            temp.keyword = ui->wordlistTableWidget->item(i, 0)->text();
-    //            temp.phoneme = ui->wordlistTableWidget->item(i, 1)->text();
-    //            wordPairList.append(temp);
-    //        }
-
-    //        // Start processing for keywords
-    //        searchResult mResult;
-
-    //        // Make container clear
-    //        resultContainer.clear();
-
-    //        // Set progress bar limits
-    //        int progressCounter = 0;
-    //        int maxRange = wordPairList.size() * urlList.size();
-    //        dialog.setValue((progressCounter++ / maxRange) * 100);
-
-    //        foreach (const words &temp, wordPairList)
-    //        {
-
-    //            kwsThreadInput input;
-    //            input.keyword = temp.phoneme;
-
-    //            if(ui->samplerate16->isChecked())
-    //                input.sampleRate = 16000;
-    //            else
-    //                input.sampleRate = 8000;
-
-    //            int urlIndex = 0;
-    //            foreach (const QUrl &url, urlList)
-    //            {
-    //#ifdef demo
-    //                if(urlIndex >= 1)
-    //                    return;
-    //#endif
-
-
-    //                input.fileUrl = url;
-
-    //                //                QFuture<kwsResult> f1 = run(runInThread, input);
-    //                futureWatcher.setFuture(QtConcurrent::run(runInThread, input));
-    //                dialog.exec();
-    //                futureWatcher.waitForFinished();
-
-    //                qDebug() << maxRange << " " << progressCounter ;
-    //                dialog.setValue((progressCounter * 1.0 / maxRange) * 100);
-    //                if(futureWatcher.isCanceled())
-    //                    return;
-
-    //                kwsResult res = futureWatcher.result();
-
-    //                if(res.confidenceSize > 0)
-    //                {
-    //                    for(int j = 0; j < res.confidenceSize; j++)
-    //                        if(res.confidence[j] >= ui->initialThresholdBox->minimum())
-    //                        {
-    //                            mResult.fileIndex = urlIndex + 1;
-    //                            mResult.filePath = url;
-    //                            mResult.searchDuration = res.duration;
-    //                            mResult.startTime = res.timeAligns[j][0];
-    //                            mResult.endTime = res.timeAligns[j][1];
-    //                            mResult.confidence = res.confidence[j];
-    //                            mResult.keyword = temp.keyword;
-    //                            mResult.date = JalailDate;
-    //                            resultContainer.append(mResult);
-    //                        }
-    //                }
-
-    //                urlIndex++;
-    //            }
-    //        }
-
-    //        //        ui->reslistClearButton->setEnabled(true);
-    //        //        ui->archiveButton->setEnabled(true);
-
-    //        QMessageBox msgBox;
-    //        msgBox.setWindowTitle("واژه یاب");
-    //        msgBox.setStyleSheet("QLabel{min-width: 300px;}");
-    //        msgBox.setText("پایان جستجو");
-    //        if(resultContainer.size())
-    //        {
-    //            msgBox.setInformativeText("تعداد نتیجه یافت شده: " + QString::number(resultContainer.size()) + "\nنتایج جستجو را در صفحه نتایج مشاهده فرمایید");
-
-    //            // Insert search result into the result table
-    //            QTableWidgetItem *tableItem;
-
-    //            for(int j = 0, resultTableCounter = 0; j < resultContainer.size(); j++, resultTableCounter++)
-    //            {
-    //                mResult = resultContainer.at(j);
-    //                if(mResult.confidence >= ui->initialThresholdBox->value())
-    //                {
-    //                    ui->resultTable->insertRow(resultTableCounter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter,0,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 0)->setText(QString::number(mResult.fileIndex));
-    //                    ui->resultTable->item(resultTableCounter, 0)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter,1,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 1)->setText(mResult.filePath.fileName());
-    //                    ui->resultTable->item(resultTableCounter, 1)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter, 2, tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 2)->setText(QString::number(mResult.searchDuration));
-    //                    ui->resultTable->item(resultTableCounter, 2)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter,3,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 3)->setText(QString::number(mResult.startTime));
-    //                    ui->resultTable->item(resultTableCounter, 3)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter,4,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 4)->setText(QString::number(mResult.endTime));
-    //                    ui->resultTable->item(resultTableCounter, 4)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter, 5,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 5)->setText(QString::number(mResult.confidence));
-    //                    ui->resultTable->item(resultTableCounter, 5)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter, 6,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 6)->setText(mResult.keyword);
-    //                    ui->resultTable->item(resultTableCounter, 6)->setTextAlignment(Qt::AlignCenter);
-
-    //                    tableItem = new QTableWidgetItem();
-    //                    ui->resultTable->setItem(resultTableCounter, 7,tableItem);
-    //                    ui->resultTable->item(resultTableCounter, 7)->setText(mResult.date);
-    //                    ui->resultTable->item(resultTableCounter, 7)->setTextAlignment(Qt::AlignCenter);
-    //                }
-    //            }
-
-    //            //            // Set result threshold box value
-    //            //            ui->threshSpinBox->setValue(ui->initialThresholdBox->value());
-    //            //            ui->thresholdSlider->setValue(ui->initialThresholdBox->value());
-    //        }
-    //        else
-    //            msgBox.setInformativeText("تعداد نتیجه یافت شده: " + QString::number(resultContainer.size()));
-
-    //        msgBox.exec();
-    //    }
-    //    else
-    //    {
-    //        QMessageBox::critical(
-    //                    this,
-    //                    tr("خطا"),
-    //                    tr("لیست پخش خالی است"));
-    //    }
 }
 
 void VajeganGUI::onThresholdSliderChanged(int value)
@@ -1738,8 +1409,8 @@ void VajeganGUI::onAddToQuoteDatabseClicked()
         {
             qDebug() << "Add quote - ERROR: " << query.lastError().text();
             QMessageBox::critical(this, tr("واژه یاب"),
-                                            tr(" خطا در پایگاه داده\n"),
-                                            QMessageBox::Ok);
+                                  tr(" خطا در پایگاه داده\n"),
+                                  QMessageBox::Ok);
         }
         else
         {

@@ -43,6 +43,7 @@ struct kwsResult{
     int confidenceSize;
     float confidence[1000];
     float timeAligns[1000][2];
+    QUrl url;
 };
 
 struct kwsResultThread{
@@ -173,7 +174,6 @@ private:
 
 private slots:
     void onKeywordEnteredSlot();
-    void onSearchButtonClickedSlot();
     void onRecordButtonClickedSlot();
     void onStopButtonClickedSlot();
     void durationChanged(qint64 duration);
@@ -187,7 +187,7 @@ private slots:
     void displayErrorMessage();
     void metaDataChanged();
     void bufferingProgress(int progress);
-    void audioAvailableChanged();
+    void audioAvailableChanged(bool flag);
     void open();
     void openFolder();
     void jump(const QModelIndex &index);

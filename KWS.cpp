@@ -42,9 +42,7 @@ Inputs:       None
 Output:       void.
 Comments:     none.
 ***********************************************************************/
-void Initialize(string KWS_Model_File, string KWS_Model_ConfigFile, double Treshold,
-                int Loop_Step, string PhnClassi_Model_File, string PHN_StatsFile, string PHN_MapFile,
-                string Feature_ConfigFile, string mfcc_stats_file)
+void Initialize(string Feature_ConfigFile, string mfcc_stats_file)
 {
     // Load feature extraction configuration
     FeatureExtracting::loadFeatureExtractionParameters(Feature_ConfigFile, mfcc_stats_file);
@@ -167,17 +165,12 @@ Inputs:       int argc, char *argv[] - main input params
 Output:       int - always 0.
 Comments:     none.
 ***********************************************************************/
-//extern "C" {
-
-float Vajegan(float *inputSignal,
+void Vajegan(float *inputSignal,
               int inputSignalLength,
               string word,
               KeywordClassifier *keywordClassifier,
               PhonemeClassifier phonemeClassifier)
 {  
-    clock_t t1,t2;
-    t1=clock();
-
     // Load phnems map
     string silenceSymbol = "sil";
     PhonemeSequence *phonemeSequence;
@@ -227,9 +220,4 @@ float Vajegan(float *inputSignal,
     delete dataset;
     delete phonemeSequence;
     delete featurExtracting;
-
-    t2 = clock();
-    float diff=((float)t2 - (float)t1);
-
-    return diff;
 }

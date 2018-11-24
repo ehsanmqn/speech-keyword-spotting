@@ -15,7 +15,5 @@
 using namespace std;
 
 
-float Vajegan(float *inputSignal, int inputSignalLength, string word, KeywordClassifier *keywordClassifier, PhonemeClassifier phonemeClassifier);
-void Initialize(string KWS_Model_File, string KWS_Model_ConfigFile, double Treshold,
-                int Loop_Step, string PhnClassi_Model_File, string PHN_StatsFile, string PHN_MapFile,
-                string Feature_ConfigFile, string mfcc_stats_file);
+void Vajegan(float *inputSignal, int inputSignalLength, string word, KeywordClassifier *keywordClassifier, PhonemeClassifier phonemeClassifier);
+void Initialize(string Feature_ConfigFile, string mfcc_stats_file);
